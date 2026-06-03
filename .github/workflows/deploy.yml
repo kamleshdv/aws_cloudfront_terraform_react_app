@@ -3,6 +3,7 @@ name: Deploy React App
 on:
   push:
     branches: [main, master]
+  workflow_dispatch:  # Manual trigger bhi add kar diya
 
 jobs:
   deploy:
@@ -16,12 +17,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
       
       - name: Install dependencies
         run: npm ci
       
       - name: Build React app
         run: npm run build
+      
+      - name: Debug - Check build folder
+        run: |
+          echo "📁 Checking build output..."
+          if [ -d "build" ]; then
+            echo "✅ build/ folder found"
+            ls -la build/
+          elif [ -d "dist" ]; then
+            echo "✅ dist/ folder found"
+            ls -la dist/
+          else
+            echo "❌ No build folder found!"
+            ls -la
+            exit 1
+          fi
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -32,15 +49,43 @@ jobs:
       
       - name: Upload to S3
         run: |
-          aws s3 sync ./dist/ s3://${{ secrets.S3_BUCKET_NAME }} --delete
+          # Check if S3_BUCKET variable exists
+          if [ -z "${{ vars.S3_BUCKET }}" ]; then
+            echo "❌ S3_BUCKET variable not set!"
+            echo "Please run setup workflow first or add S3_BUCKET to repository variables"
+            exit 1
+          fi
+          
+          # Upload build folder (not dist)
+          if [ -d "build" ]; then
+            echo "📤 Uploading build/ to s3://${{ vars.S3_BUCKET }}"
+            aws s3 sync build/ s3://${{ vars.S3_BUCKET }} --delete
+          elif [ -d "dist" ]; then
+            echo "📤 Uploading dist/ to s3://${{ vars.S3_BUCKET }}"
+            aws s3 sync dist/ s3://${{ vars.S3_BUCKET }} --delete
+          else
+            echo "❌ No build folder to upload!"
+            exit 1
+          fi
+          echo "✅ Upload complete!"
       
       - name: Invalidate CloudFront cache
         run: |
+          if [ -z "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
+            echo "❌ CLOUDFRONT_DISTRIBUTION_ID not set!"
+            exit 1
+          fi
+          
+          echo "🔄 Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
+          echo "✅ Cache invalidation sent!"
       
       - name: Show URL
         run: |
-          echo "✅ Deployed successfully!"
-          echo "🌐 URL: https://${{ secrets.CLOUDFRONT_DOMAIN }}"
+          echo "=================================="
+          echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "=================================="
+          echo "🌐 CloudFront URL: https://${{ vars.CLOUDFRONT_DOMAIN }}"
+          echo "=================================="
