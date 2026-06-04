@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -24,14 +24,13 @@ jobs:
           node-version: '20'
       
       - name: Install dependencies
-        run: |
-          cd react-app
-          npm install
+        run: npm install   # No 'cd react-app'
       
       - name: Build
-        run: |
-          cd react-app
-          npm run build   # Ye 'dist' folder banega ab
+        run: npm run build   # No 'cd react-app'
+      
+      - name: List files (debug)
+        run: ls -la   # Ye check karega ki build folder bana ya nahi
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -39,7 +38,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './react-app/dist'   # 'build' nahi, 'dist'
+          path: './dist'   # Direct 'dist', not './react-app/dist'
       
       - name: Deploy
         uses: actions/deploy-pages@v4
