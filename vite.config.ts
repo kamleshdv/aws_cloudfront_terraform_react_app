@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/aws_cloudfront_terraform_react_app/',
+  base: '/',  // ← BAS YAHI CHANGE KIYA (pehle repo name tha)
   build: {
     outDir: 'dist',
     sourcemap: true,
